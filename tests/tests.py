@@ -33,6 +33,17 @@ class TestAdversarialImageGenerator(unittest.TestCase):
 
         plt.show()
 
+    def test_prediction(self):
+        test_generator = generator.AdversarialImageGenerator("resnet50")
+        image_path = '../data/sample_images/burrito.jpg'
+        image = test_generator._AdversarialImageGenerator__load_and_preprocess(image_path)
+        prediction = test_generator._AdversarialImageGenerator__prediction(image)
+
+    def test_select_target_class(self):
+        test_generator = generator.AdversarialImageGenerator("resnet50")
+        target_class = test_generator._AdversarialImageGenerator__select_target_class()
+
+
     def test_generate_adversarial_image(self):
         # Write tests for the generate_adversarial_image method
         pass
