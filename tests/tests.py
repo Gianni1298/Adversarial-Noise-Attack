@@ -1,16 +1,37 @@
 import unittest
-from src.generator import AdversarialImageGenerator
+import importlib
+
+from matplotlib import pyplot as plt
+
+from src import generator
 
 
 class TestAdversarialImageGenerator(unittest.TestCase):
+    def setUp(self):
+        # Reload the module before each test
+        importlib.reload(generator)
 
     def test_modelNotSupported(self):
         with self.assertRaises(ValueError):
-            AdversarialImageGenerator("resnet51")
+            generator.AdversarialImageGenerator("resnet51")
 
     def test_initialization(self):
-        generator = AdversarialImageGenerator("resnet50")
-        self.assertIsNotNone(generator.model)
+        test_generator = generator.AdversarialImageGenerator("resnet50")
+        self.assertIsNotNone(test_generator.model)
+
+    def test_load_and_preprocess(self):
+        test_generator = generator.AdversarialImageGenerator("resnet50")
+        image_path = '../data/sample_images/bird.jpg'
+        image = test_generator._AdversarialImageGenerator__load_and_preprocess(image_path)
+        print(image)
+
+    def test_plot_image(self):
+        test_generator = generator.AdversarialImageGenerator("resnet50")
+        image_path = '../data/sample_images/bird.jpg'
+        image = test_generator._AdversarialImageGenerator__load_and_preprocess(image_path)
+        fig = test_generator._AdversarialImageGenerator__plot_image(image)
+
+        plt.show()
 
     def test_generate_adversarial_image(self):
         # Write tests for the generate_adversarial_image method
