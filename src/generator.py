@@ -56,11 +56,11 @@ class AdversarialImageGenerator:
         log.info(f"Original prediction: {category_name} with score: {score}")
 
         # Step 2: Validate the target class
-        target_index, target_category = self.__validate_target_class(target_class)
-        log.info(f"Selected target class: [{target_index}] {target_category}")
+        target_category = self.__validate_target_class(target_class)
+        log.info(f"Selected target class: [{target_class}] {target_category}")
 
         # Step 3: Generate the adversarial image
-        adversarial_image = self.__generate_adversarial_image(input, target_index)
+        adversarial_image = self.__generate_adversarial_image(input, target_class)
 
     def __load_and_preprocess(self, image_path):
         """
@@ -121,15 +121,16 @@ class AdversarialImageGenerator:
 
     def __validate_target_class(self, selected_index):
         if 0 <= selected_index < len(self.categories):
-            return selected_index, self.categories[selected_index]
+            return self.categories[selected_index]
         else:
             raise ValueError("Invalid target class. Please enter a valid target class")
 
     def __generate_adversarial_image(self, input, target_class):
         """
-        Generate the adversarial image
+        Generate the adversarial image using
         :param input: The input image tensor
         :param target_class: The target class
         :return: The adversarial image tensor
         """
+
         return input
