@@ -17,6 +17,7 @@ class AdversarialImageGenerator:
         self.model, self.weights = self.__init_model(model_name)
         # Step 2: Initialize the inference transforms
         self.preprocess = self.weights.transforms()
+        self.categories = self.weights.meta["categories"]
 
     def __init_model(self, model):
         """
@@ -35,7 +36,7 @@ class AdversarialImageGenerator:
         return model, weights
 
 
-    def generate_adversarial_image(self, image_path):
+    def generate_adversarial_image(self, image_path, target_class):
         """
         Main function to generate adversarial image given an image path and target class
         :param image_path:
@@ -54,12 +55,12 @@ class AdversarialImageGenerator:
         category_name, score = self.__prediction(input)
         log.info(f"Original prediction: {category_name} with score: {score}")
 
-        # Step 2: Select the target class
-        target_index, target_category = self.__select_target_class()
+        # Step 2: Validate the target class
+        target_index, target_category = self.__validate_target_class(target_class)
         log.info(f"Selected target class: [{target_index}] {target_category}")
 
-        # Step 2: Generate the adversarial image
-        adversarial_image = self.__generate_adversarial_image(input, target_class)
+        # Step 3: Generate the adversarial image
+        adversarial_image = self.__generate_adversarial_image(input, target_index)
 
     def __load_and_preprocess(self, image_path):
         """
@@ -91,6 +92,18 @@ class AdversarialImageGenerator:
 
         return fig
 
+    def show_available_categories(self):
+        num_columns = 6
+        num_rows = len(self.categories) // num_columns + (1 if len(self.categories) % num_columns > 0 else 0)
+
+        print("Available categories:")
+        for i in range(num_rows):
+            row = ""
+            for j in range(num_columns):
+                index = i * num_columns + j
+                if index < len(self.categories):
+                    row += f"{index:3d}. {self.categories[index]:<20}"
+            print(row)
 
     def __prediction(self, img_tensor):
         """
@@ -106,30 +119,11 @@ class AdversarialImageGenerator:
         print(f"{category_name}: {100 * score:.1f}%")
         return category_name, score
 
-    def __select_target_class(self):
-        categories = self.weights.meta["categories"]
-        num_columns = 6
-        num_rows = len(categories) // num_columns + (1 if len(categories) % num_columns > 0 else 0)
-
-        print("Available categories:")
-        for i in range(num_rows):
-            row = ""
-            for j in range(num_columns):
-                index = i * num_columns + j
-                if index < len(categories):
-                    row += f"{index:3d}. {categories[index]:<20}"
-            print(row)
-
-        while True:
-            try:
-                selected_index = int(input("Enter the index of the target class: "))
-                if 0 <= selected_index < len(categories):
-                    return selected_index, categories[selected_index]
-                else:
-                    print("Invalid index. Please try again.")
-            except ValueError:
-                print("Invalid input. Please enter a valid integer.")
-
+    def __validate_target_class(self, selected_index):
+        if 0 <= selected_index < len(self.categories):
+            return selected_index, self.categories[selected_index]
+        else:
+            raise ValueError("Invalid target class. Please enter a valid target class")
 
     def __generate_adversarial_image(self, input, target_class):
         """
