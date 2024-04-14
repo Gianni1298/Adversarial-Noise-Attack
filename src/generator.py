@@ -1,3 +1,4 @@
+import argparse
 import logging as log
 
 import matplotlib.pyplot as plt
@@ -73,12 +74,11 @@ class AdversarialImageGenerator:
 
     def __update_delta(self, image_input, delta, original_class, target_class):
         """
-        Update the perturbation tensor
+        Update the delta tensor
         :param image_input:
         :param delta:
         :param original_class:
         :param target_class:
-        :param num_of_steps:
         :return:
         """
         # Initialise the loss function
@@ -87,7 +87,7 @@ class AdversarialImageGenerator:
         # define the epsilon, learning rate and step number values
         epsilon = 0.01
         learning_rate = 0.01
-        num_of_steps = 300
+        num_of_steps = 500
 
         for step in range(num_of_steps):
             adversary = image_input + delta
@@ -115,25 +115,25 @@ class AdversarialImageGenerator:
 
         return delta
 
-    def __generate_output_plot(self, input_image, input_image_category, delta_updated, adversarial_image, adversarial_image_category):
+    def __generate_output_plot(self, original_image, input_image_category, input_image, adversarial_image, adversarial_image_category):
         # Plot the original image, delta tensor, and adversarial image
         fig, axes = plt.subplots(1, 3, figsize=(15, 7))
 
         # Original image
-        axes[0].imshow(input_image.squeeze().permute(1, 2, 0))
-        axes[0].set_title("Original Category: " + input_image_category)
+        axes[0].imshow(original_image.squeeze().permute(1, 2, 0))
+        axes[0].set_title("Original Image")
         axes[0].axis('off')
 
         # Delta tensor
-        delta_image = delta_updated.squeeze().permute(1, 2, 0).detach().numpy()
-        axes[1].imshow(delta_image, cmap='gray')
-        axes[1].set_title("Perturbation Image")
+        input_image = input_image.squeeze().permute(1, 2, 0).detach().numpy()
+        axes[1].imshow(input_image)
+        axes[1].set_title("Preprocessed Input Image (i.e. how the NN sees the image) \nCategory:  " + input_image_category)
         axes[1].axis('off')
 
         # Adversarial image
         adversarial_image_plot = adversarial_image.squeeze().permute(1, 2, 0).detach().numpy()
         axes[2].imshow(adversarial_image_plot)
-        axes[2].set_title("Adversarial Image Category: " + adversarial_image_category)
+        axes[2].set_title("Adversarial Image \nCategory: " + adversarial_image_category)
         axes[2].axis('off')
 
         plt.tight_layout()
@@ -176,8 +176,21 @@ class AdversarialImageGenerator:
         log.info(f"Final prediction: {final_category_name}, index_class: {final_class_id}")
 
         # Generate output plot
-        self.__generate_output_plot(input_image, original_category_name, delta_updated, adversarial_image, final_category_name)
+        self.__generate_output_plot(image, original_category_name, input_image, adversarial_image, final_category_name)
 
         return final_class_id
 
 
+# main
+if __name__ == '__main__':
+    # parse arguments from command line
+    parser = argparse.ArgumentParser()
+    parser.add_argument('image_path')
+    parser.add_argument('target_class')
+    args = parser.parse_args()
+
+    target_class = args.target_class
+    image_path = args.image_path
+
+    generator = AdversarialImageGenerator()
+    generator.generate_adversarial_image(image_path, target_class)

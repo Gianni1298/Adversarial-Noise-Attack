@@ -1,7 +1,6 @@
 import unittest
 import importlib
 
-from matplotlib import pyplot as plt
 from torchvision.io import read_image
 
 from src import generator
