@@ -38,62 +38,6 @@ class AdversarialImageGenerator:
             raise ValueError("Model not supported")
         return model, weights
 
-
-    def generate_adversarial_image(self, image_path, target_class):
-        """
-        Main function to generate adversarial image given an image path and target class
-        :param image_path:
-        :param target_class:
-        :return:
-        """
-
-        # Step 1: Load the image and preprocess
-        image = read_image(image_path)
-        input_image = self.preprocess(image).unsqueeze(0)
-        log.info("Image loaded and preprocessed")
-
-        # Get original prediction
-        original_class_id, category_name, _ = self.__prediction(input_image)
-        log.info(f"Original prediction: {category_name}, index_class: {original_class_id}")
-
-        # Step 2: Validate the target class
-        target_category = self.__validate_target_class(target_class)
-        log.info(f"Selected target class: [{target_class}] {target_category}")
-
-        # Initialise a perturbation tensor
-        delta = torch.zeros_like(input_image, requires_grad=True)
-
-        # Generate the perturbation tensor
-        delta_updated = self.__update_delta(input_image, delta, original_class_id, target_class)
-
-        # Create the adversarial image
-        adverImage = input_image + delta
-        final_class_id, final_category_name, _ = self.__prediction(adverImage)
-        log.info(f"Final prediction: {final_category_name}, index_class: {final_class_id}")
-        save_image(adverImage, "adversarial.jpg")
-
-
-    def __plot_image(self, img_tensor):
-        """
-        Plot the given image tensor
-        :param img: Image tensor
-        """
-
-        # Save the preprocessed image - not necessary to create new files
-        # save_image(img_tensor, "preprocessed_image.jpg")
-
-        # Convert the image tensor to a numpy array
-        img = img_tensor.squeeze().permute(1, 2, 0).numpy()
-
-        # Create a new figure
-        fig, ax = plt.subplots()
-
-        # Plot the image on the figure
-        ax.imshow(img)
-        ax.axis('off')
-
-        return fig
-
     def show_available_categories(self):
         num_columns = 6
         num_rows = len(self.categories) // num_columns + (1 if len(self.categories) % num_columns > 0 else 0)
@@ -107,6 +51,12 @@ class AdversarialImageGenerator:
                     row += f"{index:3d}. {self.categories[index]:<20}"
             print(row)
 
+    def __validate_target_class(self, selected_index):
+        if 0 <= selected_index < len(self.categories):
+            return self.categories[selected_index]
+        else:
+            raise ValueError("Invalid target class. Please enter a valid target class")
+
     def __prediction(self, img_tensor):
         """
         Get the prediction for the given image tensor
@@ -118,13 +68,6 @@ class AdversarialImageGenerator:
         score = prediction[class_id].item()
         category_name = self.weights.meta["categories"][class_id]
         return class_id, category_name, score
-
-    def __validate_target_class(self, selected_index):
-        if 0 <= selected_index < len(self.categories):
-            return self.categories[selected_index]
-        else:
-            raise ValueError("Invalid target class. Please enter a valid target class")
-
 
     def __update_delta(self, image_input, delta, original_class, target_class):
         """
@@ -169,4 +112,69 @@ class AdversarialImageGenerator:
             delta.data = torch.clamp(delta.data, -epsilon, epsilon)
 
         return delta
+
+    def __generate_output_plot(self, input_image, input_image_category, delta_updated, adversarial_image, adversarial_image_category):
+        # Plot the original image, delta tensor, and adversarial image
+        fig, axes = plt.subplots(1, 3, figsize=(15, 7))
+
+        # Original image
+        axes[0].imshow(input_image.squeeze().permute(1, 2, 0))
+        axes[0].set_title("Original Category: " + input_image_category)
+        axes[0].axis('off')
+
+        # Delta tensor
+        delta_image = delta_updated.squeeze().permute(1, 2, 0).detach().numpy()
+        axes[1].imshow(delta_image, cmap='gray')
+        axes[1].set_title("Perturbation Image")
+        axes[1].axis('off')
+
+        # Adversarial image
+        adversarial_image_plot = adversarial_image.squeeze().permute(1, 2, 0).detach().numpy()
+        axes[2].imshow(adversarial_image_plot)
+        axes[2].set_title("Adversarial Image Category: " + adversarial_image_category)
+        axes[2].axis('off')
+
+        plt.tight_layout()
+
+        # Save the plot
+        plt.savefig("adversarial_plot.png")
+        plt.show()
+
+
+    def generate_adversarial_image(self, image_path, target_class):
+        """
+        Main function to generate adversarial image given an image path and target class
+        :param image_path:
+        :param target_class:
+        :return:
+        """
+
+        # Step 1: Load the image and preprocess
+        image = read_image(image_path)
+        input_image = self.preprocess(image).unsqueeze(0)
+        log.info("Image loaded and preprocessed")
+
+        # Get original prediction
+        original_class_id, original_category_name, _ = self.__prediction(input_image)
+        log.info(f"Original prediction: {original_category_name}, index_class: {original_class_id}")
+
+        # Step 2: Validate the target class
+        target_category = self.__validate_target_class(target_class)
+        log.info(f"Selected target class: [{target_class}] {target_category}")
+
+        # Initialise a perturbation tensor
+        delta = torch.zeros_like(input_image, requires_grad=True)
+
+        # Generate the perturbation tensor
+        delta_updated = self.__update_delta(input_image, delta, original_class_id, target_class)
+
+        # Create the adversarial image
+        adversarial_image = input_image + delta
+        final_class_id, final_category_name, _ = self.__prediction(adversarial_image)
+        log.info(f"Final prediction: {final_category_name}, index_class: {final_class_id}")
+
+        # Generate output plot
+        self.__generate_output_plot(input_image, original_category_name, delta_updated, adversarial_image, final_category_name)
+
+
 
