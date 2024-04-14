@@ -1,1 +1,0 @@
-## If large scale testing is needed, download sample images from the internet

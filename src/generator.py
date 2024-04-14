@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 from torchvision.io.image import read_image
 from torchvision.models import resnet50, ResNet50_Weights
-from torchvision.utils import save_image
 
 log.basicConfig(level=log.INFO)
 
@@ -51,11 +50,14 @@ class AdversarialImageGenerator:
                     row += f"{index:3d}. {self.categories[index]:<20}"
             print(row)
 
-    def __validate_target_class(self, selected_index):
-        if 0 <= selected_index < len(self.categories):
-            return self.categories[selected_index]
+    def __validate_target_class(self, selected_category):
+        if selected_category in self.categories:
+            return self.categories.index(selected_category)
         else:
-            raise ValueError("Invalid target class. Please enter a valid target class")
+            raise ValueError(
+                "Invalid target category. Please enter a valid target category. You can see a list of available "
+                "categories in the data/categories.json file or show_available_categories method."
+            )
 
     def __prediction(self, img_tensor):
         """
@@ -159,14 +161,14 @@ class AdversarialImageGenerator:
         log.info(f"Original prediction: {original_category_name}, index_class: {original_class_id}")
 
         # Step 2: Validate the target class
-        target_category = self.__validate_target_class(target_class)
-        log.info(f"Selected target class: [{target_class}] {target_category}")
+        target_index = self.__validate_target_class(target_class)
+        log.info(f"Selected target class: {target_class}")
 
         # Initialise a perturbation tensor
         delta = torch.zeros_like(input_image, requires_grad=True)
 
         # Generate the perturbation tensor
-        delta_updated = self.__update_delta(input_image, delta, original_class_id, target_class)
+        delta_updated = self.__update_delta(input_image, delta, original_class_id, target_index)
 
         # Create the adversarial image
         adversarial_image = input_image + delta
@@ -176,5 +178,6 @@ class AdversarialImageGenerator:
         # Generate output plot
         self.__generate_output_plot(input_image, original_category_name, delta_updated, adversarial_image, final_category_name)
 
+        return final_class_id
 
 

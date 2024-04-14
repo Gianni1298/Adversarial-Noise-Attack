@@ -2,6 +2,7 @@ import unittest
 import importlib
 
 from matplotlib import pyplot as plt
+from torchvision.io import read_image
 
 from src import generator
 
@@ -19,45 +20,26 @@ class TestAdversarialImageGenerator(unittest.TestCase):
         test_generator = generator.AdversarialImageGenerator("resnet50")
         self.assertIsNotNone(test_generator.model)
 
-    def test_load_and_preprocess(self):
-        test_generator = generator.AdversarialImageGenerator("resnet50")
-        image_path = '../data/sample_images/bird.jpg'
-        image = test_generator._AdversarialImageGenerator__load_and_preprocess(image_path)
-        print(image)
-
-    def test_plot_image(self):
-        test_generator = generator.AdversarialImageGenerator("resnet50")
-        image_path = '../data/sample_images/bird.jpg'
-        image = test_generator._AdversarialImageGenerator__load_and_preprocess(image_path)
-        fig = test_generator._AdversarialImageGenerator__plot_image(image)
-
-        plt.show()
 
     def test_prediction(self):
         test_generator = generator.AdversarialImageGenerator("resnet50")
         image_path = '../data/sample_images/burrito.jpg'
-        image = test_generator._AdversarialImageGenerator__load_and_preprocess(image_path)
-        name, score = test_generator._AdversarialImageGenerator__prediction(image)
+        image = read_image(image_path)
+        input_image = test_generator.preprocess(image).unsqueeze(0)
+        class_id, name, score = test_generator._AdversarialImageGenerator__prediction(input_image)
         assert name == 'burrito'
 
     def test_validate_target_class(self):
         test_generator = generator.AdversarialImageGenerator("resnet50")
         with self.assertRaises(ValueError):
-            test_generator._AdversarialImageGenerator__validate_target_class(34568)
-        assert test_generator._AdversarialImageGenerator__validate_target_class(100) == 'black swan'
+            test_generator._AdversarialImageGenerator__validate_target_class("non existent class")
+        assert test_generator._AdversarialImageGenerator__validate_target_class("black swan") == 100
 
     def test_generate_adversarial_image(self):
         test_generator = generator.AdversarialImageGenerator("resnet50")
         image_path = '../data/sample_images/bird.jpg'
-        test_generator.generate_adversarial_image(image_path, 1)
-
-    def test_plot_images(self):
-        # Write tests for the plot_images method
-        pass
-
-    def test_save_adversarial_image(self):
-        # Write tests for the save_adversarial_image method
-        pass
+        class_id =  test_generator.generate_adversarial_image(image_path, "goldfish")
+        assert class_id == 1
 
 
 if __name__ == '__main__':
