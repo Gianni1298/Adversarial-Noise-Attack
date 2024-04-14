@@ -1,8 +1,11 @@
+import logging as log
+
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
 from torchvision.io.image import read_image
 from torchvision.models import resnet50, ResNet50_Weights
-import matplotlib.pyplot as plt
 from torchvision.utils import save_image
-import logging as log
 
 log.basicConfig(level=log.INFO)
 
@@ -45,31 +48,30 @@ class AdversarialImageGenerator:
         """
 
         # Step 1: Load the image and preprocess
-        input = self.__load_and_preprocess(image_path)
+        image = read_image(image_path)
+        input_image = self.preprocess(image).unsqueeze(0)
         log.info("Image loaded and preprocessed")
 
-        # Get the preprocessed image in a format that can be plotted
-        preprocessed_fig = self.__plot_image(input)
-
         # Get original prediction
-        category_name, score = self.__prediction(input)
-        log.info(f"Original prediction: {category_name} with score: {score}")
+        original_class_id, category_name, _ = self.__prediction(input_image)
+        log.info(f"Original prediction: {category_name}, index_class: {original_class_id}")
 
         # Step 2: Validate the target class
         target_category = self.__validate_target_class(target_class)
         log.info(f"Selected target class: [{target_class}] {target_category}")
 
-        # Step 3: Generate the adversarial image
-        adversarial_image = self.__generate_adversarial_image(input, target_class)
+        # Initialise a perturbation tensor
+        delta = torch.zeros_like(input_image, requires_grad=True)
 
-    def __load_and_preprocess(self, image_path):
-        """
-        Load and preprocess the image
-        :param image_path:
-        :return:
-        """
-        img = read_image(image_path)
-        return self.preprocess(img).unsqueeze(0)
+        # Generate the perturbation tensor
+        delta_updated = self.__update_delta(input_image, delta, original_class_id, target_class)
+
+        # Create the adversarial image
+        adverImage = input_image + delta
+        final_class_id, final_category_name, _ = self.__prediction(adverImage)
+        log.info(f"Final prediction: {final_category_name}, index_class: {final_class_id}")
+        save_image(adverImage, "adversarial.jpg")
+
 
     def __plot_image(self, img_tensor):
         """
@@ -115,9 +117,7 @@ class AdversarialImageGenerator:
         class_id = prediction.argmax().item()
         score = prediction[class_id].item()
         category_name = self.weights.meta["categories"][class_id]
-        print(f"class_id: {class_id}")
-        print(f"{category_name}: {100 * score:.1f}%")
-        return category_name, score
+        return class_id, category_name, score
 
     def __validate_target_class(self, selected_index):
         if 0 <= selected_index < len(self.categories):
@@ -125,12 +125,48 @@ class AdversarialImageGenerator:
         else:
             raise ValueError("Invalid target class. Please enter a valid target class")
 
-    def __generate_adversarial_image(self, input, target_class):
-        """
-        Generate the adversarial image using
-        :param input: The input image tensor
-        :param target_class: The target class
-        :return: The adversarial image tensor
-        """
 
-        return input
+    def __update_delta(self, image_input, delta, original_class, target_class):
+        """
+        Update the perturbation tensor
+        :param image_input:
+        :param delta:
+        :param original_class:
+        :param target_class:
+        :param num_of_steps:
+        :return:
+        """
+        # Initialise the loss function
+        criterion = nn.CrossEntropyLoss()
+
+        # define the epsilon, learning rate and step number values
+        epsilon = 0.01
+        learning_rate = 0.01
+        num_of_steps = 300
+
+        for step in range(num_of_steps):
+            adversary = image_input + delta
+
+            predictions = self.model(adversary)
+
+            original_loss = -criterion(predictions, torch.tensor([original_class]))
+
+            target_loss = criterion(predictions, torch.tensor([target_class]))
+            total_loss = original_loss + target_loss
+
+            # display the loss every 10 steps
+            if step % 10 == 0:
+                print('step: {}, loss: {}'.format(step, total_loss.item()))
+
+            total_loss.backward()
+            gradients = delta.grad
+            gradients = torch.clamp(gradients, -epsilon, epsilon)
+
+            # Update the delta tensor
+            delta.data -= learning_rate * gradients
+
+            # Clip the updated delta tensor
+            delta.data = torch.clamp(delta.data, -epsilon, epsilon)
+
+        return delta
+

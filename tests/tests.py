@@ -47,8 +47,9 @@ class TestAdversarialImageGenerator(unittest.TestCase):
         assert test_generator._AdversarialImageGenerator__validate_target_class(100) == 'black swan'
 
     def test_generate_adversarial_image(self):
-        # Write tests for the generate_adversarial_image method
-        pass
+        test_generator = generator.AdversarialImageGenerator("resnet50")
+        image_path = '../data/sample_images/bird.jpg'
+        test_generator.generate_adversarial_image(image_path, 1)
 
     def test_plot_images(self):
         # Write tests for the plot_images method
